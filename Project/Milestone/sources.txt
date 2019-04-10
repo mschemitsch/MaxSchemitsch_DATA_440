@@ -1,0 +1,3 @@
+https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality.names
+http://www.vinhoverde.pt/en/history-of-vinho-verde
+https://www.wineturtle.com/difference-between-red-and-white-wine/
