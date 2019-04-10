@@ -1,0 +1,273 @@
+---
+title: "Logistic Regression: Wine Classification (Milestone)"
+author: "Max Schemitsch"
+date: "April 10, 2019"
+output:
+  pdf_document: default
+  html_document:
+    fig_height: 4
+    fig_width: 6
+---
+
+* * *
+
+#### Dataset Citation
+
+This dataset is public available for research. The details are described in [Cortez et al., 2009].
+
+P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. 
+  Modeling wine preferences by data mining from physicochemical properties.
+  In Decision Support Systems, Elsevier, 47(4):547-553. ISSN: 0167-9236.
+
+Available at: [@Elsevier] http://dx.doi.org/10.1016/j.dss.2009.05.016
+              [Pre-press (pdf)] http://www3.dsi.uminho.pt/pcortez/winequality09.pdf
+              [bib] http://www3.dsi.uminho.pt/pcortez/dss09.bib
+
+* * *
+
+#### Dataset Notes
+
+These two datasets, which I have downloaded from Kaggle, use red and white win samples. The metrics used are objective levels like acidity, pH, chlorides, and sugars. Using these types of levels, a score, or quality, is output on a scale of 0 to 10, with 0 being very poor and 10 being outstanding.
+
+The wine used in this dataset are variants of the Portuguese "Vinho Verde" wine. The Vinho Verde region occupies northwest Portugal, and is one of the largest wine regions on the planet.
+
+* * *
+
+#### Attribute Information
+
+Before diving into the dataset, there are a few bits of information that can be extracted at face value.
+
+Our dataframe has 1599 instances of red wines, and 4898 instances of white wines. Although more than two-thirds of the data is white-wine related, there methods that we will use to isolate both types of wine, and analyze them together.
+
+We have a total of 11 input attributes:
+
+Input variables (based on physicochemical tests):
+
+```
+   1 - fixed acidity (tartaric acid - g / dm^3)
+   
+   2 - volatile acidity (acetic acid - g / dm^3)
+   
+   3 - citric acid (g / dm^3)
+   
+   4 - residual sugar (g / dm^3)
+   
+   5 - chlorides (sodium chloride - g / dm^3
+   
+   6 - free sulfur dioxide (mg / dm^3)
+   
+   7 - total sulfur dioxide (mg / dm^3)
+   
+   8 - density (g / cm^3)
+   
+   9 - pH
+   
+   10 - sulphates (potassium sulphate - g / dm3)
+   
+   11 - alcohol (% by volume)
+```
+
+We also have our singular output attribute:
+
+```
+Output variable (based on sensory data): 
+   12 - quality (score between 0 and 10)
+```
+
+The description text file included with this dataframe describes what each attribute means:
+
+```
+   1 - fixed acidity: most acids involved with wine or fixed or nonvolatile (do not evaporate readily)
+
+   2 - volatile acidity: the amount of acetic acid in wine, which at too high of levels can lead to an
+       unpleasant, vinegar taste
+
+   3 - citric acid: found in small quantities, citric acid can add 'freshness' and flavor to wines
+
+   4 - residual sugar: the amount of sugar remaining after fermentation stops, it's rare to find wines with
+       less than 1 gram/liter and wines with greater than 45 grams/liter are considered sweet
+
+   5 - chlorides: the amount of salt in the wine
+
+   6 - free sulfur dioxide: the free form of SO2 exists in equilibrium between molecular SO2 (as a dissolved
+       gas) and bisulfite ion; it prevents microbial growth and the oxidation of wine
+
+   7 - total sulfur dioxide: amount of free and bound forms of S02; in low concentrations, SO2 is mostly
+       undetectable in wine, but at free SO2 concentrations over 50 ppm, SO2 becomes evident in the nose and
+       taste of wine
+
+   8 - density: the density of water is close to that of water depending on the percent alcohol and sugar
+       content
+
+   9 - pH: describes how acidic or basic a wine is on a scale from 0 (very acidic) to 14 (very basic); most
+       wines are between 3-4 on the pH scale
+
+   10 - sulphates: a wine additive which can contribute to sulfur dioxide gas (S02) levels, wich acts as an
+        antimicrobial and antioxidant
+
+   11 - alcohol: the percent alcohol content of the wine
+```
+* * *
+
+#### Project Goals & Methods
+
+For this project, there will be two parts of interest.
+
+
+The first part of this project will look in-depth at the characteristics and correlations of variables.
+
+The primary purpose of this section is to first gain an understanding of the data. Additionally, it will gives us an idea of what variables will be useful when moving to the second part of the project.
+
+The second part of this project will be using multiple logistic regression to create models that determine wine scores.
+
+The skills I have learned throughout my Data Science curriculum will hopefully allow me to find a suitable model.
+
+* * *
+
+#### Load Data & Library
+
+```{r}
+library(ggplot2)
+library(corrplot)
+library(gridExtra)
+red = read.csv("https://www.dropbox.com/s/jtfubj8tfqpqsa4/wineReds.csv?dl=1")
+white = read.csv("https://www.dropbox.com/s/n1pbwl5fkne2i3k/wineWhites.csv?dl=1")
+red["color"]="red"
+white["color"]="white"
+df = rbind(red, white)
+attach(df)
+```
+
+* * *
+
+#### Dataframe Characteristics
+
+```{r}
+head(df)
+names(df)
+```
+
+Looking at the top of our dataset, tells us our attribute variable names, and a general idea of what their values are like.
+
+(We can also see that the integer attribute that increments the wines is called X.)
+
+```{r}
+summary(df)
+```
+
+The summary of our dataframe gives important values like averages, minimums, and maximums.
+
+Looking at these values, there are a few important notes to make:
+
+```
+1 - Minimum quality is 3 and maximum is 9
+
+2 - The average residual sugar is skewed left: the mean is 5.443, but has a maximum of 65.8.
+
+3 - Similarly, chlorides is skewed. It's range is from 0.009 to 0.611, but has a mean of 0.056.
+
+4 - In the same vein, both free form sulfur dioxide and total sulfur dioxide averages are skewed.
+```
+
+First, we can take a look at the distribution of scores and wines:
+
+```{r}
+table(quality)
+qplot(quality, data = df, fill = color, binwidth = 1)
+```
+
+This shows us that a majority (~6,000) of score values lie between the 5-7 range.
+There are roughly 200 values for both scores of 4 and scores of 8.
+Finally, we only have 30 scores of 3 and a miniscule five scores of 9.
+
+The histogram of wine qualities also shows us the the scores are normally distribued for both red and white wines.
+
+If we want to further validate the data for later regression use, we can check the residuals.
+
+We can also verify the existence of outliers with boxplots:
+
+```{r}
+ggplot(df, aes(X, residual.sugar))+geom_boxplot() + ggtitle("Residual Sugar Outliers")
+ggplot(df, aes(X, chlorides))+geom_boxplot() + ggtitle("Chloride Outliers")
+ggplot(df, aes(X, free.sulfur.dioxide))+geom_boxplot() + ggtitle("Free Sulfur Dioxide Outliers")
+ggplot(df, aes(X, total.sulfur.dioxide))+geom_boxplot() + ggtitle("Total Sulfur Dioxide Outliers")
+```
+
+Next what we can do, before anything else, is check the correlations of variables. This will help us better understand which characteristics are and aren't related.
+
+```{r}
+dfcorr=cor(df[,-14])  # our correlation coefficients
+corrplot(dfcorr, method="number")
+```
+
+Since we want to predict quality score, we can first look there for variables. A surprising (or unsurprising) seven of the eleven characteristics have a correlation coefficient of between $-0.1$ and $0.1$. This means these variables most likely have very little to do with score output.
+
+Does this mean they won't be included in our modeling process? Not necessarily. Seemingly irrelevant data points can actually improve model accuracy if included.
+
+The other four variables with at least a $\pm 2$ correlation are volatile acidity ($-0.27$), chlorides ($-0.2$), density ($0.31$), and alcohol level ($0.44$). Before we do any analysis of these variables, we can tell that these will most likely be important to our modelling process later on.
+
+Looking at other variables, we can see some more important correlations ($\leq -0.4$ or $\geq 0.4$):
+
+
+```
+1 - Fixed Acidity & Density (0.46)
+
+2 - Volatile Acidity & Total Sulfur Dioxide (-0.41)
+
+3 - Residual Sugar & Free Sulfur Dioxide (0.4)
+
+4 - Residual Sugar & Total Sulfur Dioxide (0.5)
+
+5 - Residual Sugar & Density (0.55)
+
+6 - Chlorides & Sulfates (0.4)
+
+7 - Free Sulfur Dioxide & Total Sulfur Dioxide (0.72)
+
+8 - Density & Alcohol (-0.69)
+```
+
+* * *
+
+#### Quality Analysis
+
+```{r}
+tapply(alcohol, quality, mean)
+qplot(alcohol, data=df, fill=color)
+tapply(density, quality, mean)
+tapply(volatile.acidity, quality, mean)
+qplot(volatile.acidity, data=df, fill=color)
+tapply(chlorides, quality, mean)
+```
+
+Looking at these quality dependent means we can see that quality score generally rises as the level of alcohol increases. This rise isn't true for quality scores of 4 and 5, but qualities 3 & 4 have very similar alcohol levels. Additionally, a third of the wines have a quality score of 5, which could explain the rather low mean alcohol level.
+
+We can see that density stays relatively the same throughout all quality levels. The only trend is that the density level generally decreases as quality goes up.
+
+Volatile acidity levels generally decrease (except at qualities 8 and 9), and chloride levels generally decrease as well, except at quality 5.
+
+We have to remember that red and white wines are characteristically different, so we can check quality on both subsets of our dataframe.
+
+```{r}
+cor(red[,(2:12)], red$quality)
+cor(white[,(2:12)], white$quality)
+```
+
+We can notice from these corrlations that volatile acidity, citric acid, and sulphates matter more to red wines than white wines.
+
+We can also see that chlorides and density matter more to white wines than red wines.
+
+These correlations are apparent due to the characteristics of each wine and how they're made. We can show that white wines are generally sweeter:
+
+```{r}
+tapply(white$residual.sugar, white$quality, mean)
+tapply(red$residual.sugar, red$quality, mean)
+```
+
+This is due to the fermentation process for each wine:
+
+White wine is made only from the juice of the grape; juice is pressed out from the grape, and only that juice is fermented.
+
+In contrast, red wine fermentation utilizes not only the juice of the grape, but also the grapes' skin and pieces of the grape.
+
+While there are other differences in these wines, these differences along with grape type, create the differing acidity and sugar levels between the two.
